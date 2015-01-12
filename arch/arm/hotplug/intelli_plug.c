@@ -1,10 +1,7 @@
 /*
- * arch/arm/mach-msm/intelli_plug.c
+ * Author: Paul Reioux aka Faux123 <reioux@gmail.com>
  *
- * Copyright (C) 2012 Paul Reioux <reioux@gmail.com>
- *           (C) 2013 Paul Reioux <reioux@gmail.com>
- *           (C) 2014 Paul Reioux <reioux@gmail.com>
- *           (C) 2014 LoungeKatt <twistedumbrella@gmail.com>
+ * Copyright 2012~2014 Paul Reioux
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -24,7 +21,6 @@
 #include <linux/slab.h>
 #include <linux/input.h>
 #include <linux/cpufreq.h>
-#include <soc/qcom/cpufreq.h>
 
 #ifdef CONFIG_POWERSUSPEND
 #include <linux/powersuspend.h>
@@ -59,7 +55,7 @@ static struct workqueue_struct *intelliplug_boost_wq;
 static unsigned int intelli_plug_active = 0;
 module_param(intelli_plug_active, uint, 0644);
 
-static unsigned int touch_boost_active = 0;
+static unsigned int touch_boost_active = 1;
 module_param(touch_boost_active, uint, 0644);
 
 static unsigned int nr_run_profile_sel = 0;
@@ -80,7 +76,7 @@ struct ip_cpu_info {
 
 static DEFINE_PER_CPU(struct ip_cpu_info, ip_info);
 
-static unsigned int screen_off_max = MSM_CPUFREQ_NO_LIMIT;
+static unsigned int screen_off_max = UINT_MAX;
 module_param(screen_off_max, uint, 0644);
 
 #define CAPACITY_RESERVE	50
@@ -203,7 +199,7 @@ static unsigned int calculate_thread_stats(void)
 	return nr_run;
 }
 
-static void __ref intelli_plug_boost_fn(struct work_struct *work)
+static void __cpuinit intelli_plug_boost_fn(struct work_struct *work)
 {
 
 	int nr_cpus = num_online_cpus();
@@ -254,7 +250,7 @@ static void unplug_cpu(int min_active_cpu)
 	}
 }
 
-static void __ref intelli_plug_work_fn(struct work_struct *work)
+static void __cpuinit intelli_plug_work_fn(struct work_struct *work)
 {
 	unsigned int nr_run_stat;
 	unsigned int cpu_count = 0;
@@ -414,29 +410,10 @@ static void wakeup_boost(void)
 	}
 }
 
-void __ref intelli_plug_perf_boost(bool on)
-{
-    unsigned int cpu;
-    
-    if (intelli_plug_active) {
-        flush_workqueue(intelliplug_wq);
-        if (on) {
-            for_each_possible_cpu(cpu) {
-                if (!cpu_online(cpu))
-                cpu_up(cpu);
-            }
-        } else {
-            queue_delayed_work_on(0, intelliplug_wq,
-            	&intelli_plug_work,
-            	msecs_to_jiffies(sampling_time));
-        }
-    }
-}
-
 #ifdef CONFIG_POWERSUSPEND
-static void __ref intelli_plug_resume(struct power_suspend *handler)
+static void __cpuinit intelli_plug_resume(struct power_suspend *handler)
 #else
-static void __ref intelli_plug_resume(struct early_suspend *handler)
+static void __cpuinit intelli_plug_resume(struct early_suspend *handler)
 #endif
 {
 
@@ -601,7 +578,6 @@ int __init intelli_plug_init(void)
 }
 
 MODULE_AUTHOR("Paul Reioux <reioux@gmail.com>");
-MODULE_AUTHOR("LoungeKatt <twistedumbrella@gmail.com>");
 MODULE_DESCRIPTION("'intell_plug' - An intelligent cpu hotplug driver for "
 	"Low Latency Frequency Transition capable processors");
 MODULE_LICENSE("GPL");
